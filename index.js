@@ -2,7 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const { Pool } = require("pg");
-const bcrypt = require('bcrypt'); // Importar bcrypt para encriptar contraseñas
+const bcrypt = require('bcryptjs'); // Cambiado de bcrypt a bcryptjs
 
 // Inicializar la aplicación Express
 const app = express();
