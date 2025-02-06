@@ -25,7 +25,7 @@ app.get("/", (req, res) => {
 app.get("/usuarios", async (req, res) => {
     try {
         const result = await pool.query("SELECT * FROM usuarios");
-        res.json(result.rows);
+        res.json(result.rows);  // Devolver todos los usuarios
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -92,26 +92,6 @@ app.put("/usuarios/:id", async (req, res) => {
             return res.status(404).json({ error: "Usuario no encontrado" });
         }
         res.json(result.rows[0]);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Ruta para iniciar sesión
-app.post("/usuarios/login", async (req, res) => {
-    const { correo, contrasena } = req.body;
-    try {
-        const result = await pool.query(
-            "SELECT * FROM usuarios WHERE correo = $1 AND contrasena = $2",
-            [correo, contrasena]
-        );
-        if (result.rows.length > 0) {
-            // Si el usuario existe, lo devuelve
-            res.json(result.rows[0]);
-        } else {
-            // Si no existe el usuario, responde con error
-            res.status(404).json({ error: "Usuario o contraseña incorrectos." });
-        }
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
