@@ -107,6 +107,40 @@ app.put("/usuarios/:id", async (req, res) => {
     }
 });
 
+// Ruta para iniciar sesión (verificar la contraseña cifrada)
+app.post("/usuarios/login", async (req, res) => {
+    const { correo, contrasena } = req.body;
+
+    if (!correo || !contrasena) {
+        return res.status(400).json({ error: "Se requiere correo y contraseña." });
+    }
+
+    try {
+        // Buscar el usuario por correo
+        const result = await pool.query("SELECT * FROM usuarios WHERE correo = $1", [correo]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "Usuario no encontrado" });
+        }
+
+        const user = result.rows[0];
+
+        // Comparar la contraseña proporcionada con la contraseña cifrada en la base de datos
+        const isMatch = await bcrypt.compare(contrasena, user.contrasena);
+
+        if (isMatch) {
+            // Si las contraseñas coinciden, iniciar sesión
+            res.json({ message: "Inicio de sesión exitoso", usuario: user });
+        } else {
+            // Si las contraseñas no coinciden, devolver un error
+            res.status(400).json({ error: "Contraseña incorrecta" });
+        }
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Configurar el puerto y arrancar el servidor
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor corriendo en http://localhost:${PORT}`));
