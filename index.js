@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const { Pool } = require("pg");
+const bcrypt = require('bcrypt'); // Importar bcrypt para encriptar contraseñas
 
 // Inicializar la aplicación Express
 const app = express();
@@ -37,10 +38,15 @@ app.post("/usuarios", async (req, res) => {
     if (!nombre || !correo || !contrasena) {
         return res.status(400).json({ error: "Todos los campos son obligatorios: nombre, correo, contrasena." });
     }
+
     try {
+        // Encriptar la contraseña antes de guardarla
+        const saltRounds = 10; // Cuanto mayor sea, más seguro
+        const hashedPassword = await bcrypt.hash(contrasena, saltRounds);
+
         const result = await pool.query(
             "INSERT INTO usuarios (nombre, correo, contrasena) VALUES ($1, $2, $3) RETURNING *",
-            [nombre, correo, contrasena]
+            [nombre, correo, hashedPassword]
         );
         res.status(201).json(result.rows[0]);
     } catch (err) {
@@ -84,9 +90,13 @@ app.put("/usuarios/:id", async (req, res) => {
         return res.status(400).json({ error: "Todos los campos son obligatorios: nombre, correo, contrasena." });
     }
     try {
+        // Encriptar la nueva contraseña antes de actualizarla
+        const saltRounds = 10; // Cuanto mayor sea, más seguro
+        const hashedPassword = await bcrypt.hash(contrasena, saltRounds);
+
         const result = await pool.query(
             "UPDATE usuarios SET nombre = $1, correo = $2, contrasena = $3 WHERE id = $4 RETURNING *",
-            [nombre, correo, contrasena, id]
+            [nombre, correo, hashedPassword, id]
         );
         if (result.rows.length === 0) {
             return res.status(404).json({ error: "Usuario no encontrado" });
