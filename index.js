@@ -97,6 +97,26 @@ app.put("/usuarios/:id", async (req, res) => {
     }
 });
 
+// Ruta para iniciar sesión
+app.post("/usuarios/login", async (req, res) => {
+    const { correo, contrasena } = req.body;
+    try {
+        const result = await pool.query(
+            "SELECT * FROM usuarios WHERE correo = $1 AND contrasena = $2",
+            [correo, contrasena]
+        );
+        if (result.rows.length > 0) {
+            // Si el usuario existe, lo devuelve
+            res.json(result.rows[0]);
+        } else {
+            // Si no existe el usuario, responde con error
+            res.status(404).json({ error: "Usuario o contraseña incorrectos." });
+        }
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Configurar el puerto y arrancar el servidor
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor corriendo en http://localhost:${PORT}`));
