@@ -141,6 +141,52 @@ app.post("/usuarios/login", async (req, res) => {
     }
 });
 
+// Nuevas rutas para manejar registros (ingresos y gastos)
+
+// Ruta para obtener todos los registros de ingresos y gastos
+app.get("/registros", async (req, res) => {
+    try {
+        const result = await pool.query("SELECT * FROM registros");
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Ruta para insertar un nuevo registro (ingreso o gasto)
+app.post("/registros", async (req, res) => {
+    const { tipo, monto, descripcion, fecha } = req.body;
+
+    if (!tipo || !monto || !fecha) {
+        return res.status(400).json({ error: "Faltan campos obligatorios: tipo, monto, fecha." });
+    }
+
+    try {
+        const result = await pool.query(
+            "INSERT INTO registros (tipo, monto, descripcion, fecha) VALUES ($1, $2, $3, $4) RETURNING *",
+            [tipo, monto, descripcion, fecha]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Ruta para eliminar un registro por su ID
+app.delete("/registros/:id", async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const result = await pool.query("DELETE FROM registros WHERE id = $1 RETURNING *", [id]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "Registro no encontrado" });
+        }
+        res.json({ message: "Registro eliminado correctamente", registro: result.rows[0] });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Configurar el puerto y arrancar el servidor
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor corriendo en http://localhost:${PORT}`));
