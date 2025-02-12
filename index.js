@@ -153,18 +153,20 @@ app.get("/registros", async (req, res) => {
     }
 });
 
-// Ruta para insertar un nuevo registro (ingreso o gasto)
-app.post("/registros", async (req, res) => {
-    const { tipo, monto, descripcion, fecha } = req.body;
 
-    if (!tipo || !monto || !fecha) {
-        return res.status(400).json({ error: "Faltan campos obligatorios: tipo, monto, fecha." });
+
+
+app.post("/registros", async (req, res) => {
+    const { id_usuario, tipo, monto, descripcion, fecha } = req.body;
+
+    if (!id_usuario || !tipo || !monto || !fecha) {
+        return res.status(400).json({ error: "Faltan campos obligatorios: id_usuario, tipo, monto, fecha." });
     }
 
     try {
         const result = await pool.query(
-            "INSERT INTO registros (tipo, monto, descripcion, fecha) VALUES ($1, $2, $3, $4) RETURNING *",
-            [tipo, monto, descripcion, fecha]
+            "INSERT INTO registros (id_usuario, tipo, monto, descripcion, fecha) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+            [id_usuario, tipo, monto, descripcion, fecha]
         );
         res.status(201).json(result.rows[0]);
     } catch (err) {
@@ -186,6 +188,17 @@ app.delete("/registros/:id", async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+app.get("/registros/:idUsuario", async (req, res) => {
+    const { idUsuario } = req.params;
+    try {
+        const result = await pool.query("SELECT * FROM registros WHERE id_usuario = $1", [idUsuario]);
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 
 // Configurar el puerto y arrancar el servidor
 const PORT = process.env.PORT || 3000;
