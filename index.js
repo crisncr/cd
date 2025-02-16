@@ -154,6 +154,9 @@ app.get("/registros", async (req, res) => {
 });
 
 // Ruta para insertar un nuevo registro (ingreso o gasto)
+const jwt = require("jsonwebtoken");  // Asegúrate de importar jwt
+
+// Ruta para insertar un nuevo registro (ingreso o gasto)
 app.post("/registros", async (req, res) => {
     const { tipo, monto, descripcion, fecha } = req.body;
 
@@ -161,16 +164,27 @@ app.post("/registros", async (req, res) => {
         return res.status(400).json({ error: "Faltan campos obligatorios: tipo, monto, fecha." });
     }
 
+    const token = req.headers.authorization?.split(' ')[1];  // Obtener el token del encabezado
+
+    if (!token) {
+        return res.status(401).json({ error: "Se requiere autenticación" });
+    }
+
     try {
+        // Verificar el token y obtener el id_usuario
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const id_usuario = decoded.id_usuario;  // Obtener el id_usuario del token
+
         const result = await pool.query(
-            "INSERT INTO registros (tipo, monto, descripcion, fecha) VALUES ($1, $2, $3, $4) RETURNING *",
-            [tipo, monto, descripcion, fecha]
+            "INSERT INTO registros (tipo, monto, descripcion, fecha, id_usuario) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+            [tipo, monto, descripcion, fecha, id_usuario]
         );
-        res.status(201).json(result.rows[0]);
+        res.status(201).json(result.rows[0]);  // Enviar la respuesta con el registro creado
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
+
 
 // Ruta para eliminar un registro por su ID
 app.delete("/registros/:id", async (req, res) => {
