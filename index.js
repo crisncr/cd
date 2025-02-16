@@ -3,7 +3,6 @@ const express = require("express");
 const cors = require("cors");
 const { Pool } = require("pg");
 const bcrypt = require('bcryptjs'); // Cambiado de bcrypt a bcryptjs
-const jwt = require("jsonwebtoken"); // Para manejar tokens JWT
 
 // Inicializar la aplicación Express
 const app = express();
@@ -130,9 +129,8 @@ app.post("/usuarios/login", async (req, res) => {
         const isMatch = await bcrypt.compare(contrasena, user.contrasena);
 
         if (isMatch) {
-            // Si las contraseñas coinciden, generar un token JWT
-            const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-            res.json({ message: "Inicio de sesión exitoso", usuario: user, token });
+            // Si las contraseñas coinciden, iniciar sesión
+            res.json({ message: "Inicio de sesión exitoso", usuario: user });
         } else {
             // Si las contraseñas no coinciden, devolver un error
             res.status(400).json({ error: "Contraseña incorrecta" });
@@ -143,40 +141,21 @@ app.post("/usuarios/login", async (req, res) => {
     }
 });
 
-// Middleware para verificar el token JWT
-const verifyToken = (req, res, next) => {
-    const token = req.headers["authorization"];
-    if (!token) {
-        return res.status(403).json({ error: "No autorizado, falta token" });
-    }
-
-    try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.usuario_id = decoded.id; // Extrae el id del usuario autenticado
-        next();
-    } catch (err) {
-        res.status(401).json({ error: "Token inválido" });
-    }
-};
-
 // Nuevas rutas para manejar registros (ingresos y gastos)
 
-// Ruta para obtener todos los registros de ingresos y gastos del usuario autenticado
-app.get("/registros", verifyToken, async (req, res) => {
-    const usuario_id = req.usuario_id; // Se obtiene automáticamente del token
-
+// Ruta para obtener todos los registros de ingresos y gastos
+app.get("/registros", async (req, res) => {
     try {
-        const result = await pool.query("SELECT * FROM registros WHERE usuario_id = $1", [usuario_id]);
+        const result = await pool.query("SELECT * FROM registros");
         res.json(result.rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-// Ruta para insertar un nuevo registro (ingreso o gasto) y asociarlo al usuario autenticado
-app.post("/registros", verifyToken, async (req, res) => {
+// Ruta para insertar un nuevo registro (ingreso o gasto)
+app.post("/registros", async (req, res) => {
     const { tipo, monto, descripcion, fecha } = req.body;
-    const usuario_id = req.usuario_id; // Se obtiene automáticamente del token
 
     if (!tipo || !monto || !fecha) {
         return res.status(400).json({ error: "Faltan campos obligatorios: tipo, monto, fecha." });
@@ -184,8 +163,8 @@ app.post("/registros", verifyToken, async (req, res) => {
 
     try {
         const result = await pool.query(
-            "INSERT INTO registros (usuario_id, tipo, monto, descripcion, fecha) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-            [usuario_id, tipo, monto, descripcion, fecha]
+            "INSERT INTO registros (tipo, monto, descripcion, fecha) VALUES ($1, $2, $3, $4) RETURNING *",
+            [tipo, monto, descripcion, fecha]
         );
         res.status(201).json(result.rows[0]);
     } catch (err) {
@@ -194,7 +173,7 @@ app.post("/registros", verifyToken, async (req, res) => {
 });
 
 // Ruta para eliminar un registro por su ID
-app.delete("/registros/:id", verifyToken, async (req, res) => {
+app.delete("/registros/:id", async (req, res) => {
     const { id } = req.params;
 
     try {
