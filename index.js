@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const { Pool } = require("pg");
 const bcrypt = require('bcryptjs'); // Cambiado de bcrypt a bcryptjs
+const jwt = require("jsonwebtoken"); // Para manejar tokens JWT
 
 // Inicializar la aplicación Express
 const app = express();
@@ -130,9 +131,9 @@ app.post("/usuarios/login", async (req, res) => {
 
         if (isMatch) {
             // Si las contraseñas coinciden, iniciar sesión
+            // No modificamos nada acá según lo solicitado
             res.json({ message: "Inicio de sesión exitoso", usuario: user });
         } else {
-            // Si las contraseñas no coinciden, devolver un error
             res.status(400).json({ error: "Contraseña incorrecta" });
         }
 
@@ -154,9 +155,7 @@ app.get("/registros", async (req, res) => {
 });
 
 // Ruta para insertar un nuevo registro (ingreso o gasto)
-const jwt = require("jsonwebtoken");  // Asegúrate de importar jwt
-
-// Ruta para insertar un nuevo registro (ingreso o gasto)
+// Aquí se extrae automáticamente el id_usuario del token JWT enviado en la cabecera
 app.post("/registros", async (req, res) => {
     const { tipo, monto, descripcion, fecha } = req.body;
 
@@ -164,32 +163,31 @@ app.post("/registros", async (req, res) => {
         return res.status(400).json({ error: "Faltan campos obligatorios: tipo, monto, fecha." });
     }
 
-    const token = req.headers.authorization?.split(' ')[1];  // Obtener el token del encabezado
+    // Obtener el token del encabezado (se espera formato "Bearer <token>")
+    const token = req.headers.authorization?.split(' ')[1];
 
     if (!token) {
         return res.status(401).json({ error: "Se requiere autenticación" });
     }
 
     try {
-        // Verificar el token y obtener el id_usuario
+        // Verificar el token y extraer el id_usuario del payload
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const id_usuario = decoded.id_usuario;  // Obtener el id_usuario del token
+        const id_usuario = decoded.id_usuario; // Se asume que el token incluye el campo "id_usuario"
 
         const result = await pool.query(
             "INSERT INTO registros (tipo, monto, descripcion, fecha, id_usuario) VALUES ($1, $2, $3, $4, $5) RETURNING *",
             [tipo, monto, descripcion, fecha, id_usuario]
         );
-        res.status(201).json(result.rows[0]);  // Enviar la respuesta con el registro creado
+        res.status(201).json(result.rows[0]);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-
 // Ruta para eliminar un registro por su ID
 app.delete("/registros/:id", async (req, res) => {
     const { id } = req.params;
-
     try {
         const result = await pool.query("DELETE FROM registros WHERE id = $1 RETURNING *", [id]);
         if (result.rows.length === 0) {
